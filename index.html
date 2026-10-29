@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#183b3c">
+    <title>Микроклимат — Виртуальный лабораторный комплекс (РК)</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌡️</text></svg>">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+    <!-- Toast контейнер -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- ── БОКОВАЯ ПАНЕЛЬ НАВИГАЦИИ (SIDEBAR В СТИЛЕ ПАПКИ 22) ── -->
+    <aside class="sidebar">
+        <a class="brand" href="#">
+            <span class="brand-mark" aria-hidden="true">ОТ<span>↗</span></span>
+            <span><span data-i18n="brandTitle">Микроклимат</span><small data-i18n="brandSub">ЛАБОРАТОРНЫЙ КОМПЛЕКС</small></span>
+        </a>
+
+        <p class="nav-caption" data-i18n="navCaption">РАБОЧЕЕ ПРОСТРАНСТВО</p>
+
+        <nav aria-label="Основная навигация">
+            <button class="nav-tab-btn active" data-tab="tabStand" type="button">
+                <span aria-hidden="true">◫</span> <span data-i18n="tabStand">Стенд замера</span>
+            </button>
+            <button class="nav-tab-btn" data-tab="tabSanpin" type="button">
+                <span aria-hidden="true">📋</span> <span data-i18n="tabSanpin">Экспертная оценка</span>
+            </button>
+            <button class="nav-tab-btn" data-tab="tabMeasures" type="button">
+                <span aria-hidden="true">🛠</span> <span data-i18n="tabMeasures">Каталог мер (12)</span>
+            </button>
+            <button class="nav-tab-btn" data-tab="tabCharts" type="button">
+                <span aria-hidden="true">📈</span> <span data-i18n="tabCharts">Графики и протокол</span>
+            </button>
+        </nav>
+
+        <div class="sidebar-bottom">
+            <div class="territory">
+                <span class="live-dot"></span> <span data-i18n="normativeStatus">ГОСТ 12.1.005-88 (РК)</span>
+                <small data-i18n="normativeSub">Приказ МЗ РК № ДСМ-15 • ст. 184 ТК РК</small>
+            </div>
+
+            <div class="account">
+                <span class="avatar" aria-hidden="true">ОТ</span>
+                <div>
+                    <b data-i18n="accountName">Лаборатория БЖД</b>
+                    <small data-i18n="accountRole">Исследовательский комплекс</small>
+                </div>
+            </div>
+
+            <button id="btnSidebarPrint" class="sidebar-action-btn" type="button">
+                <span data-i18n="sidebarPrint">Распечатать протокол</span> <span>↗</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- ── ОСНОВНОЕ РАБОЧЕЕ ПРОСТРАНСТВО (WORKSPACE) ── -->
+    <div class="workspace">
+
+        <!-- ВЕРХНЯЯ СТРОКА (TOPBAR) -->
+        <header class="topbar">
+            <div class="topbar-left">
+                <span data-i18n="crumbCountry">Республика Казахстан</span>
+                <span class="divider">/</span>
+                <span data-i18n="crumbDept">Охрана труда и БЖД</span>
+                <span class="divider">/</span>
+                <span style="font-weight: 600; color: var(--ink);" data-i18n="crumbApp">Лабораторный комплекс «Микроклимат»</span>
+            </div>
+            <div class="topbar-right">
+                <!-- ПЕРЕКЛЮЧАТЕЛЬ ЯЗЫКА (RU / ҚАЗ) -->
+                <div class="lang-switch-group" id="langSwitchGroup" role="group" aria-label="Тілді таңдау / Выбор языка">
+                    <button type="button" class="lang-btn active" data-lang="ru">RU</button>
+                    <button type="button" class="lang-btn" data-lang="kz">ҚАЗ</button>
+                </div>
+                <time id="liveDateTime"></time>
+                <span class="badge" id="topStatusBadge" data-i18n="topStatusBadge">Норматив РК активен</span>
+            </div>
+        </header>
+
+        <!-- ГЛАВНАЯ ОБЛАСТЬ (MAIN) -->
+        <main id="main">
+
+            <!-- ЗАГОЛОВОК СТРАНИЦЫ -->
+            <div class="page-head">
+                <div>
+                    <div class="eyebrow" data-i18n="eyebrow">ЛАБОРАТОРНАЯ РАБОТА • САНИТАРНЫЕ НОРМЫ И ТК РК</div>
+                    <h1 data-i18n="h1">Исследование параметров производственного микроклимата</h1>
+                    <p data-i18n="pageDesc">Инструментальные замеры (психрометр, анемометр, радиация), гигиеническая оценка по ГОСТ 12.1.005-88 и ст. 184 ТК РК</p>
+                </div>
+                <div class="page-actions">
+                    <button id="btnQuickSave" class="button" type="button" data-i18n="btnQuickSave">💾 Зафиксировать замер</button>
+                    <button id="btnQuickExport" class="button secondary" type="button" data-i18n="btnQuickExport">🖨️ Протокол</button>
+                </div>
+            </div>
+
+            <!-- ── ЕДИНАЯ СТРОКА МЕТРИК (STATS STRIP В СТИЛЕ 22) ── -->
+            <div class="stats">
+                <div class="stat">
+                    <span class="stat-label" data-i18n="statTempLabel">Температура воздуха, t</span>
+                    <strong><span id="dashTemp">27.2</span><small data-i18n="statUnitTemp">°C</small></strong>
+                    <span class="stat-foot" id="dashTempFoot"><span class="stat-indicator-dot dot-green"></span> <span data-i18n="dotPermissible">В допустимых пределах</span></span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label" data-i18n="statRhLabel">Относительная влажность, φ</span>
+                    <strong><span id="dashRh">63.6</span><small data-i18n="statUnitRh">%</small></strong>
+                    <span class="stat-foot" id="dashRhFoot"><span class="stat-indicator-dot dot-amber"></span> <span data-i18n="dotHarmful">Выше оптимума</span></span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label" data-i18n="statVLabel">Скорость движения, v</span>
+                    <strong><span id="dashV">0.08</span><small data-i18n="statUnitV">м/с</small></strong>
+                    <span class="stat-foot" id="dashVFoot"><span class="stat-indicator-dot dot-green"></span> <span data-i18n="dotAirCalm">Спокойный воздух</span></span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label" data-i18n="statRadLabel">Тепловое облучение, W</span>
+                    <strong><span id="dashRad">15</span><small data-i18n="statUnitRad">Вт/м²</small></strong>
+                    <span class="stat-foot" id="dashRadFoot"><span class="stat-indicator-dot dot-green"></span> <span data-i18n="dotRadSafe">Норма без СИЗ</span></span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label" data-i18n="statClassLabel">Класс условий труда</span>
+                    <strong style="color: var(--amber);"><span id="dashClass">2</span></strong>
+                    <span class="stat-foot" id="dashClassFoot"><span class="stat-indicator-dot dot-amber"></span> <span id="dashClassLabel">Допустимый</span></span>
+                </div>
+            </div>
+
+            <!-- ── БЫСТРЫЕ СЦЕНАРИИ КАЗАХСТАНА ── -->
+            <div class="scenarios-bar">
+                <span class="scenarios-title" data-i18n="scenariosTitle">⚡ Сценарии РК:</span>
+                <button class="scenario-btn" data-preset="preset-1" type="button" data-preset-id="preset-1">💻 Офис (Астана)</button>
+                <button class="scenario-btn" data-preset="preset-2" type="button" data-preset-id="preset-2">🏭 Цех (Караганда)</button>
+                <button class="scenario-btn" data-preset="preset-3" type="button" data-preset-id="preset-3">🔥 Металлургия (Темиртау)</button>
+                <button class="scenario-btn" data-preset="preset-6" type="button" data-preset-id="preset-6">☀️ Промысел (Мангистау)</button>
+                <button class="scenario-btn" data-preset="preset-7" type="button" data-preset-id="preset-7">⛏️ Шахта (Экибастуз)</button>
+                <button class="scenario-btn" data-preset="preset-5" type="button" data-preset-id="preset-5">🧪 Лаборатория (Атырау)</button>
+            </div>
+
+            <!-- ── ПАНЕЛЬ ВЫБОРА СЦЕНАРИЯ И НОРМ ── -->
+            <div class="panel">
+                <div class="panel-head">
+                    <h2 data-i18n="panelParamsTitle">Параметры производственного участка</h2>
+                    <span class="badge neutral" data-i18n="panelParamsBadge">ГОСТ 12.1.005-88 • Таблица 1</span>
+                </div>
+                <div class="panel-body">
+                    <div class="control-grid">
+                        <div class="control-field">
+                            <label for="workplacePresetSelect" data-i18n="labelPreset">Вариант / Рабочее место:</label>
+                            <select id="workplacePresetSelect" class="form-select"></select>
+                            <div id="presetDescription" class="preset-desc-box"></div>
+                        </div>
+
+                        <div class="control-field">
+                            <label for="categorySelect" data-i18n="labelCategory">Категория работ (энерготраты):</label>
+                            <select id="categorySelect" class="form-select"></select>
+                        </div>
+
+                        <div class="control-field">
+                            <label data-i18n="labelSeason">Период года:</label>
+                            <div class="radio-group-box">
+                                <label class="radio-label">
+                                    <input type="radio" name="seasonRadio" id="seasonCold" value="cold">
+                                    <span data-i18n="seasonCold">❄️ Холодный (≤10°C)</span>
+                                </label>
+                                <label class="radio-label">
+                                    <input type="radio" name="seasonRadio" id="seasonWarm" value="warm" checked>
+                                    <span data-i18n="seasonWarm">☀️ Тёплый (>10°C)</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══════════════════════════════════════════════════════════
+                 ВКЛАДКА 1: ВИРТУАЛЬНЫЙ СТЕНД ЗАМЕРА
+                 ═══════════════════════════════════════════════════════════ -->
+            <section id="tabStand" class="tab-content-panel tab-active">
+                <div class="grid-2col">
+                    <!-- Прибор 1: Психрометр Ассмана МВ-4М -->
+                    <div class="panel">
+                        <div class="panel-head">
+                            <h2><span>🌡️</span> <span data-i18n="panelPsychTitle">Аспирационный психрометр МВ-4М (Ассмана)</span></h2>
+                            <span class="badge">t, &phi;</span>
+                        </div>
+                        <div class="panel-body">
+                            <p class="panel-desc" data-i18n="panelPsychDesc">
+                                Принудительный обдув со скоростью 2.0 м/с. Два термометра защищены экранами от лучистого тепла. Влажность воздуха рассчитывается по психометрической формуле Шпрунга.
+                            </p>
+
+                            <div class="instrument-rig">
+                                <div class="psychrometer-stand">
+                                    <div class="thermometer-rig">
+                                        <!-- Сухой термометр -->
+                                        <div class="thermometer-wrapper">
+                                            <div class="thermometer-label therm-label-dry" data-i18n="thermDryLabel">Сухой, t<sub>сух</sub></div>
+                                            <div class="thermometer-body">
+                                                <div class="thermometer-scale">
+                                                    <span>+50</span><span>+40</span><span>+30</span><span>+20</span><span>+10</span><span>0</span><span>-10</span>
+                                                </div>
+                                                <div class="mercury-column mercury-dry" id="dryTempMercury" style="height: 60%;"></div>
+                                                <div class="thermometer-bulb bulb-dry"></div>
+                                            </div>
+                                            <div class="thermometer-value" id="dryTempVal">27.2 °C</div>
+                                        </div>
+
+                                        <!-- Влажный термометр -->
+                                        <div class="thermometer-wrapper">
+                                            <div class="thermometer-label therm-label-wet" data-i18n="thermWetLabel">Влажный, t<sub>вл</sub></div>
+                                            <div class="thermometer-body">
+                                                <div class="thermometer-scale">
+                                                    <span>+50</span><span>+40</span><span>+30</span><span>+20</span><span>+10</span><span>0</span><span>-10</span>
+                                                </div>
+                                                <div class="mercury-column mercury-wet" id="wetTempMercury" style="height: 52%;"></div>
+                                                <div class="thermometer-bulb bulb-wet" id="wetBulbElem" data-i18n-title="thermWetBulbTitle" title="Резервуар обёрнут смоченным батистом"></div>
+                                            </div>
+                                            <div class="thermometer-value" id="wetTempVal">22.0 °C</div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Аспиратор -->
+                                    <div class="aspirator-box">
+                                        <div class="aspirator-fan" id="aspiratorFanIcon">⚙️</div>
+                                        <div class="aspirator-status" id="aspiratorStatusText" data-i18n="aspiratorOff">Аспиратор выключен</div>
+                                        <button id="btnStartAspirator" class="button" type="button" data-i18n="btnAspiratorStart">Завести аспиратор</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mini-stats-grid grid-3">
+                                <div class="mini-stat-box">
+                                    <div class="mini-stat-label" data-i18n="diffLabel">&Delta;t (разность)</div>
+                                    <div class="mini-stat-value" id="psychDiffVal">5.2 °C</div>
+                                </div>
+                                <div class="mini-stat-box">
+                                    <div class="mini-stat-label" data-i18n="vaporLabel">Упругость пара (e)</div>
+                                    <div class="mini-stat-value" id="vaporPressVal">23.1 гПа</div>
+                                </div>
+                                <div class="mini-stat-box">
+                                    <div class="mini-stat-label" data-i18n="calcRhLabel">Влажность &phi; (Шпрунг)</div>
+                                    <div class="mini-stat-value" style="color: var(--green);" id="calcRhVal">63.6%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Прибор 2: Крыльчатый анемометр АСО-3 -->
+                    <div class="panel">
+                        <div class="panel-head">
+                            <h2><span>💨</span> <span data-i18n="panelAnemTitle">Крыльчатый анемометр АСО-3</span></h2>
+                            <span class="badge">v (м/с)</span>
+                        </div>
+                        <div class="panel-body">
+                            <p class="panel-desc" data-i18n="panelAnemDesc">
+                                Измерение скорости воздушных потоков в диапазоне 0.1–5.0 м/с. Замер: разница показаний счётного механизма за 20 секунд по секундомеру.
+                            </p>
+
+                            <div class="instrument-rig">
+                                <div class="anemometer-stand">
+                                    <div class="turbine-ring">
+                                        <div class="turbine-blades" id="anemometerBlades">
+                                            <svg viewBox="0 0 100 100">
+                                                <circle cx="50" cy="50" r="12" fill="#597368" />
+                                                <path d="M50,38 Q45,15 35,10 Q50,5 55,20 Z" />
+                                                <path d="M50,62 Q55,85 65,90 Q50,95 45,80 Z" />
+                                                <path d="M38,50 Q15,55 10,65 Q5,50 20,45 Z" />
+                                                <path d="M62,50 Q85,45 90,35 Q95,50 80,55 Z" />
+                                            </svg>
+                                        </div>
+                                    </div>
+
+                                    <div style="flex: 1;">
+                                        <div class="counter-gauge">
+                                            <div style="font-size: 10px; color: var(--muted); text-transform: uppercase; font-weight: 700; margin-bottom: 2px;" data-i18n="anemCounterTitle">Счётный механизм (деления)</div>
+                                            <div class="counter-digits" id="anemometerCounterDisplay">1240</div>
+                                        </div>
+                                        <div class="timer-row">
+                                            <span data-i18n="stopwatchLabel">Секундомер:</span>
+                                            <strong id="anemometerTimerDisplay">20 с</strong>
+                                        </div>
+                                        <button id="btnStartAnemometer" class="button" style="width: 100%;" type="button" data-i18n="btnAnemStart">Пуск замера (20 с)</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mini-stats-grid grid-2">
+                                <div class="mini-stat-box">
+                                    <div class="mini-stat-label" data-i18n="anemDeltaLabel">&Delta;n (деления за 20 с)</div>
+                                    <div class="mini-stat-value" id="anemometerDeltaVal">1 дел</div>
+                                </div>
+                                <div class="mini-stat-box">
+                                    <div class="mini-stat-label" data-i18n="anemVelocityLabel">Скорость потока воздуха (v)</div>
+                                    <div class="mini-stat-value" style="color: var(--green);" id="anemometerVelocityVal">0.08 м/с</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Тепловое излучение и шаровой термометр -->
+                <div class="panel">
+                    <div class="panel-head">
+                        <h2><span>☀️</span> <span data-i18n="panelRadTitle">Тепловое облучение и шаровой термометр</span></h2>
+                        <span class="badge amber" data-i18n="badgeRad">Лучистое тепло</span>
+                    </div>
+                    <div class="panel-body">
+                        <div class="mini-stats-grid grid-3">
+                            <div class="mini-stat-box">
+                                <div class="mini-stat-label" data-i18n="radFluxLabel">Интенсивность облучения (W)</div>
+                                <div class="mini-stat-value" id="radiationVal">15 Вт/м²</div>
+                                <div class="mini-stat-hint" data-i18n="radFluxHint">Норма РК без СИЗ: ≤ 140 Вт/м²</div>
+                            </div>
+                            <div class="mini-stat-box">
+                                <div class="mini-stat-label" data-i18n="globeTempLabel">Температура шарового термометра (t<sub>шар</sub>)</div>
+                                <div class="mini-stat-value" id="globeTempVal">27.5 °C</div>
+                                <div class="mini-stat-hint" data-i18n="globeTempHint">С учётом радиационного тепла</div>
+                            </div>
+                            <div class="mini-stat-box">
+                                <div class="mini-stat-label" data-i18n="tnsLabel">Индекс тепловой нагрузки (ТНС / WBGT)</div>
+                                <div class="mini-stat-value" id="tnsVal">23.7 °C</div>
+                                <div class="mini-stat-hint" data-i18n="tnsHint">Комплексный показатель по СанПиН РК</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ручная настройка параметров среды -->
+                <div class="panel">
+                    <div class="panel-head">
+                        <h2><span>🎛️</span> <span data-i18n="panelSlidersTitle">Интерактивная ручная регулировка параметров среды</span></h2>
+                        <button id="btnResetSliders" class="button secondary" type="button" data-i18n="btnResetSliders">Сбросить к пресету</button>
+                    </div>
+                    <div class="panel-body">
+                        <p class="panel-desc" data-i18n="panelSlidersDesc">Перемещайте ползунки для моделирования произвольных микроклиматических условий в реальном времени:</p>
+                        <div class="slider-panel">
+                            <div class="slider-row">
+                                <span class="slider-label" data-i18n="sliderDryLabel">🌡️ t сухого, °C</span>
+                                <input type="range" class="range-slider" id="sliderTempDry" min="-10" max="50" step="0.1" value="27.2">
+                                <span class="slider-value" id="sliderTempDryVal">27.2 °C</span>
+                            </div>
+                            <div class="slider-row">
+                                <span class="slider-label" data-i18n="sliderWetLabel">💧 t влажного, °C</span>
+                                <input type="range" class="range-slider" id="sliderTempWet" min="-10" max="45" step="0.1" value="22.0">
+                                <span class="slider-value" id="sliderTempWetVal">22.0 °C</span>
+                            </div>
+                            <div class="slider-row">
+                                <span class="slider-label" data-i18n="sliderDeltaLabel">💨 Δn анемометра</span>
+                                <input type="range" class="range-slider" id="sliderDeltaN" min="0" max="250" step="1" value="1">
+                                <span class="slider-value" id="sliderDeltaNVal">1 дел</span>
+                            </div>
+                            <div class="slider-row">
+                                <span class="slider-label" data-i18n="sliderRadLabel">☀️ Облучение, Вт/м²</span>
+                                <input type="range" class="range-slider" id="sliderRadiation" min="0" max="1200" step="5" value="15">
+                                <span class="slider-value" id="sliderRadiationVal">15 Вт/м²</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Блок: Риск-датчик + Пошаговый расчёт -->
+                <div class="grid-2col">
+                    <!-- Стрелочный датчик класса условий труда -->
+                    <div class="panel">
+                        <div class="panel-head">
+                            <h2><span>⚠️</span> <span data-i18n="panelGaugeTitle">Индикатор класса условий труда (РК)</span></h2>
+                        </div>
+                        <div class="panel-body">
+                            <div class="risk-gauge-box">
+                                <svg class="risk-gauge-svg" viewBox="0 0 200 115" id="riskGaugeSvg">
+                                    <path d="M 25 100 A 75 75 0 0 1 175 100" fill="none" stroke="#dce2db" stroke-width="16" stroke-linecap="round"/>
+                                    <path d="M 25 100 A 75 75 0 0 1 65 35" fill="none" stroke="#297263" stroke-width="16" stroke-linecap="round" opacity="0.4"/>
+                                    <path d="M 65 35 A 75 75 0 0 1 100 25" fill="none" stroke="#9c651b" stroke-width="16" stroke-linecap="round" opacity="0.4"/>
+                                    <path d="M 100 25 A 75 75 0 0 1 135 35" fill="none" stroke="#c05621" stroke-width="16" stroke-linecap="round" opacity="0.4"/>
+                                    <path d="M 135 35 A 75 75 0 0 1 175 100" fill="none" stroke="#a13e35" stroke-width="16" stroke-linecap="round" opacity="0.4"/>
+                                    <line id="gaugeNeedle" x1="100" y1="100" x2="100" y2="32" stroke="#183b3c" stroke-width="3.5" stroke-linecap="round" style="transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); transform-origin: 100px 100px; transform: rotate(-15deg);"/>
+                                    <circle cx="100" cy="100" r="7" fill="#183b3c"/>
+                                    <circle cx="100" cy="100" r="3" fill="#ffffff"/>
+                                </svg>
+                                <div class="risk-gauge-value" id="riskGaugeValue">2</div>
+                                <div class="risk-gauge-label" data-i18n="gaugeClassLabel">Класс условий труда</div>
+                                <div class="risk-gauge-desc" id="riskGaugeDesc">Допустимые условия (класс 2)</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Пошаговый расчёт формулы Шпрунга -->
+                    <div class="panel">
+                        <div class="panel-head">
+                            <h2><span>📐</span> <span data-i18n="panelFormulaTitle">Математический расчёт по формуле Шпрунга</span></h2>
+                        </div>
+                        <div class="panel-body">
+                            <div class="formula-panel">
+                                <button class="formula-toggle" id="btnFormulaToggle" type="button">
+                                    <span class="arrow">▶</span> <span id="formulaToggleText" data-i18n="btnFormulaShow">Показать пошаговый вывод формулы</span>
+                                </button>
+                                <div class="formula-content" id="formulaContent">
+                                    <div id="formulaSteps"></div>
+                                </div>
+                            </div>
+                            <div class="legal-ref" data-i18n="legalRefText">
+                                Нормативная основа: <strong>ГОСТ 12.1.005-88</strong> (Таблица 1) • <strong>Приказ МЗ РК № ҚР ДСМ-15</strong> • <strong>Трудовой кодекс РК</strong> ст. 184
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══════════════════════════════════════════════════════════
+                 ВКЛАДКА 2: ЭКСПЕРТНАЯ ОЦЕНКА И РЕКОМЕНДАЦИИ
+                 ═══════════════════════════════════════════════════════════ -->
+            <section id="tabSanpin" class="tab-content-panel">
+                <div class="panel">
+                    <div class="panel-head">
+                        <h2><span>📋</span> <span data-i18n="panelSanpinTitle">Экспертная гигиеническая оценка микроклимата (ГОСТ 12.1.005-88 / МЗ РК № ДСМ-15)</span></h2>
+                        <div id="workClassBadge" class="status-badge badge-warning">2 (Допустимый)</div>
+                    </div>
+                    <div class="panel-body">
+                        <div class="alert alert-info" id="workClassTitle">
+                            <strong>Класс условий труда: 2 (Допустимый)</strong>
+                        </div>
+
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th data-i18n="thFactor">Фактор микроклимата</th>
+                                        <th data-i18n="thActual">Фактическое значение</th>
+                                        <th data-i18n="thOptimal">Оптимальная норма (ГОСТ РК)</th>
+                                        <th data-i18n="thPermissible">Допустимая норма (ГОСТ РК)</th>
+                                        <th data-i18n="thStatus">Статус соответствия</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr id="tEvalRow">
+                                        <td><strong data-i18n="rowTemp">Температура воздуха, t</strong></td>
+                                        <td class="val-cell">27.2 °C</td>
+                                        <td class="opt-cell">23–25 °C</td>
+                                        <td class="perm-cell">22–28 °C</td>
+                                        <td class="status-cell"></td>
+                                    </tr>
+                                    <tr id="rhEvalRow">
+                                        <td><strong data-i18n="rowRh">Относительная влажность, &phi;</strong></td>
+                                        <td class="val-cell">63.6%</td>
+                                        <td class="opt-cell">40–60%</td>
+                                        <td class="perm-cell">15–55%</td>
+                                        <td class="status-cell"></td>
+                                    </tr>
+                                    <tr id="vEvalRow">
+                                        <td><strong data-i18n="rowV">Скорость движения воздуха, v</strong></td>
+                                        <td class="val-cell">0.08 м/с</td>
+                                        <td class="opt-cell">&le; 0.1 м/с</td>
+                                        <td class="perm-cell">&le; 0.2 м/с</td>
+                                        <td class="status-cell"></td>
+                                    </tr>
+                                    <tr id="radEvalRow">
+                                        <td><strong data-i18n="rowRad">Интенсивность теплового облучения</strong></td>
+                                        <td class="val-cell">15 Вт/м²</td>
+                                        <td class="opt-cell">&le; 140 Вт/м²</td>
+                                        <td class="perm-cell">&le; 350 Вт/м² (с СИЗ)</td>
+                                        <td class="status-cell"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="eval-reasons">
+                            <h3 class="eval-reasons-title" data-i18n="evalReasonsTitle">Выявленные отклонения и особенности:</h3>
+                            <ul id="evalReasonsList" class="eval-reasons-list"></ul>
+                        </div>
+
+                        <!-- Подробные рекомендации со связанными кнопками мер -->
+                        <div id="recommendationsPanel" class="recommendations-panel"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══════════════════════════════════════════════════════════
+                 ВКЛАДКА 3: КАТАЛОГ МЕР ЗАЩИТЫ (12 МЕР)
+                 ═══════════════════════════════════════════════════════════ -->
+            <section id="tabMeasures" class="tab-content-panel">
+                <div class="panel">
+                    <div class="panel-head">
+                        <h2><span>🛠️</span> <span data-i18n="panelMeasuresTitle">Каталог инженерно-технических и организационных мероприятий (ст. 184 ТК РК)</span></h2>
+                        <button id="btnResetMeasures" class="button secondary" type="button" data-i18n="btnResetMeasures">Сбросить все меры</button>
+                    </div>
+                    <div class="panel-body">
+                        <div id="measuresImpactSummary"></div>
+
+                        <p class="panel-desc" data-i18n="measuresDesc">
+                            Включайте защитные инженерные и организационные системы в соответствии с законодательством Республики Казахстан для нормализации микроклимата и снижения класса условий труда:
+                        </p>
+
+                        <!-- Фильтр по типам регулирования -->
+                        <div class="measures-filter-bar" id="measuresFilterBar">
+                            <button class="measure-filter-btn active" data-filter="all" type="button" data-i18n="filterAll">Все меры (12)</button>
+                            <button class="measure-filter-btn" data-filter="temp" type="button" data-i18n="filterTemp">🌡️ Температура</button>
+                            <button class="measure-filter-btn" data-filter="velocity" type="button" data-i18n="filterVelocity">💨 Скорость потока</button>
+                            <button class="measure-filter-btn" data-filter="humidity" type="button" data-i18n="filterHumidity">💧 Влажность</button>
+                            <button class="measure-filter-btn" data-filter="radiation" type="button" data-i18n="filterRadiation">☀️ Тепловое излучение</button>
+                            <button class="measure-filter-btn" data-filter="organizational" type="button" data-i18n="filterOrg">👥 Режим и отдых</button>
+                        </div>
+
+                        <div class="measures-grid" id="measuresGrid"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══════════════════════════════════════════════════════════
+                 ВКЛАДКА 4: ГРАФИКИ И ПРОТОКОЛ ЗАМЕРОВ
+                 ═══════════════════════════════════════════════════════════ -->
+            <section id="tabCharts" class="tab-content-panel">
+                <div class="grid-2col">
+                    <div class="panel">
+                        <div class="panel-head">
+                            <h2><span>📊</span> <span data-i18n="panelBarTitle">Сопоставление фактических значений с нормативами (РК)</span></h2>
+                        </div>
+                        <div class="panel-body">
+                            <div class="chart-wrapper">
+                                <canvas id="chartBarCanvas"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-head">
+                            <h2><span>🎯</span> <span data-i18n="panelComfortTitle">Зона комфорта по ГОСТ 12.1.005-88 (t° × φ%)</span></h2>
+                        </div>
+                        <div class="panel-body">
+                            <div class="chart-wrapper">
+                                <canvas id="chartComfortCanvas"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="panel-head">
+                        <h2><span>📝</span> <span data-i18n="panelHistoryTitle">Журнал инструментальных замеров и протокол</span></h2>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button id="btnSaveHistory" class="button" type="button" data-i18n="btnSaveHistory">💾 Зафиксировать замер</button>
+                            <button id="btnClearHistory" class="button secondary" type="button" data-i18n="btnClearHistory">Очистить</button>
+                            <button id="btnExportPdf" class="button secondary" type="button" data-i18n="btnExportPdf">🖨️ Распечатать протокол</button>
+                        </div>
+                    </div>
+                    <div class="panel-body">
+                        <div id="historyList" class="history-list">
+                            <div class="history-empty" data-i18n="historyEmpty">Нет сохранённых замеров. Нажмите «Зафиксировать замер» для внесения текущих параметров в протокол.</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <!-- ПОДВАЛ (FOOTER В СТИЛЕ 22) -->
+        <footer class="footer">
+            <span data-i18n="footerLeft">Виртуальный лабораторный комплекс «Микроклимат» · Республика Казахстан</span>
+            <span data-i18n="footerRight">Нормативная база: ГОСТ 12.1.005-88 • Приказ МЗ РК № ҚР ДСМ-15 • Трудовой кодекс РК (ст. 182, 184)</span>
+        </footer>
+
+    </div>
+
+    <!-- Подключение скриптов: i18n -> data -> app -->
+    <script src="i18n.js"></script>
+    <script src="data_sanpin.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
